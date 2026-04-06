@@ -13,9 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('pengembalian', function (Blueprint $table) {
-            $table->dropColumn('tanggal_kembali_real');
-        });
+    Schema::table('pengembalian', function (Blueprint $table) {
+    if (Schema::hasColumn('pengembalian', 'tanggal_kembali_real')) {
+        $table->dropColumn('tanggal_kembali_real');
+    }
+});
     }
 
     /**
