@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del *)",
+      "Bash(c:\\laragon\\bin\\php\\php-8.1.10-win32-vs16-x64\\php.exe *)",
+      "Bash(c:\\laragon\\bin\\php\\php-8.1.10\\php.exe *)",
+      "Bash(dir *)",
+      "Bash(c:\\laragon\\bin\\php\\php-8.3.16-win32-vs16-x64\\php.exe *)",
+      "Bash(artisan *)",
+      "Bash(c:\\laragon\\bin\\php\\php-8.2.12-win32-vs16-x64\\php.exe *)"
+    ]
+  },
+  "$version": 3
+}
