@@ -1,0 +1,26 @@
+[build]
+  command = "composer install --no-dev --optimize-autoloader"
+
+# NO deploy command - akan run migration manual setelah deploy sukses
+# [deploy]
+#   command = "php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+
+[environment]
+  APP_NAME = "Sistem Peminjaman Alat"
+  APP_ENV = "production"
+  APP_DEBUG = "false"
+  APP_KEY = "{{ .APP_KEY }}"
+  APP_URL = "{{ .APP_URL }}"
+  
+  DB_CONNECTION = "pgsql"
+  DB_HOST = "{{ .DB_HOST }}"
+  DB_PORT = "{{ .DB_PORT }}"
+  DB_DATABASE = "{{ .DB_DATABASE }}"
+  DB_USERNAME = "{{ .DB_USERNAME }}"
+  DB_PASSWORD = "{{ .DB_PASSWORD }}"
+  DB_SSLMODE = "prefer"
+  
+  SESSION_DRIVER = "database"
+  CACHE_STORE = "database"
+  QUEUE_CONNECTION = "database"
+  FILESYSTEM_DISK = "public"
