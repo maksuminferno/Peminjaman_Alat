@@ -535,4 +535,109 @@ class PetugasController extends Controller
 
         return redirect()->route('petugas.pengembalian')->with('success', 'Data pengembalian berhasil dihapus!');
     }
+
+    public function confirmReturned($id)
+    {
+        try {
+            $request = \Illuminate\Http\Request::capture();
+            $data = json_decode($request->getContent(), true);
+
+            $pengembalian = Pengembalian::findOrFail($id);
+
+            // Hapus file foto jika ada
+            if ($pengembalian->bukti_foto) {
+                $fotoPath = public_path($pengembalian->bukti_foto);
+                if (file_exists($fotoPath)) {
+                    unlink($fotoPath);
+                }
+            }
+
+            // If tool is damaged, log the damage info
+            if (isset($data['kondisi']) && $data['kondisi'] === 'rusak') {
+                $this->logActivity("Konfirmasi pengembalian ID: {$id} - Alat RUSAK, Persentase: {$data['persen_kerusakan']}%, Denda: Rp " . number_format($data['denda_kerusakan'] ?? 0));
+            } else {
+                $this->logActivity("Konfirmasi pengembalian ID: {$id} - Alat dalam kondisi BAIK");
+            }
+
+            // Hapus data pengembalian
+            $pengembalian->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data pengembalian berhasil dihapus!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getPengembalianDetails($id)
+    {
+        try {
+            $pengembalian = Pengembalian::with('peminjaman.detailPeminjaman.alat')->findOrFail($id);
+
+            $details = [];
+            foreach ($pengembalian->peminjaman->detailPeminjaman as $detail) {
+                $details[] = [
+                    'id_detail' => $detail->id_detail,
+                    'id_alat' => $detail->id_alat,
+                    'nama_alat' => $detail->alat->nama_alat,
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'details' => $details
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deletePeminjaman($id)
+    {
+        $peminjaman = Peminjaman::findOrFail($id);
+
+        // Check if peminjaman can be deleted
+        // Allow deleting active borrowings (dipinjam/terlambat) - will auto-return
+        // Also allow deleting pending/rejected borrowings
+        $canDelete = in_array($peminjaman->status, ['menunggu persetujuan', 'ditolak', 'dipinjam', 'terlambat']);
+        
+        if (!$canDelete) {
+            return redirect()->route('petugas.peminjaman')->with('error', 'Peminjaman yang sudah dikembalikan tidak dapat dihapus!');
+        }
+
+        // If peminjaman is active (dipinjam/terlambat), restore stock first
+        if (in_array($peminjaman->status, ['dipinjam', 'terlambat'])) {
+            // Restore stock for all borrowed items
+            foreach ($peminjaman->detailPeminjaman as $detail) {
+                $alat = $detail->alat;
+                if ($alat) {
+                    $alat->update(['stok' => $alat->stok + $detail->jumlah]);
+                }
+            }
+
+            // Delete detail peminjaman
+            $peminjaman->detailPeminjaman()->delete();
+
+            // Delete peminjaman
+            $peminjaman->delete();
+
+            $this->logActivity("Menghapus peminjaman aktif ID: PJN" . str_pad($id, 3, '0', STR_PAD_LEFT) . " - Stok dikembalikan");
+        } else {
+            // For pending/rejected, just delete details and peminjaman
+            $peminjaman->detailPeminjaman()->delete();
+            $peminjaman->delete();
+
+            $this->logActivity("Menghapus peminjaman ID: PJN" . str_pad($id, 3, '0', STR_PAD_LEFT));
+        }
+
+        return redirect()->route('petugas.peminjaman')->with('success', 'Peminjaman berhasil dihapus!');
+    }
 }

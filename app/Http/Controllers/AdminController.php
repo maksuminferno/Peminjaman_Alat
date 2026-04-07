@@ -142,43 +142,70 @@ class AdminController extends Controller
             'id_kategori' => 'required|exists:kategori,id_kategori',
             'stok' => 'required|integer|min:1',
             'kode_barang' => 'nullable|string|max:255',
+            'kode_barang_base' => 'nullable|string|max:255',
             'lokasi' => 'nullable|string|max:255',
             'deskripsi' => 'nullable|string',
             'items' => 'nullable|array',
-            'items.*.kode_barang' => 'nullable|string|max:255',
-            'items.*.lokasi' => 'nullable|string|max:255',
             'items.*.kondisi' => 'nullable|in:baik,diperbaiki,rusak',
         ]);
 
         $stok = $request->stok;
         $items = $request->items ?? [];
 
-        // If stock > 1 and items are provided, create multiple records
+        // Helper function to generate sequential kode_barang
+        $generateKodeBarang = function($baseKode, $index) {
+            // Try to match pattern: text + separator + number
+            if (preg_match('/^(.*?)(\d+)$/', $baseKode, $matches)) {
+                $prefix = $matches[1];
+                $startNum = intval($matches[2]);
+                $numLength = strlen($matches[2]); // Preserve zero-padding
+
+                $newNum = $startNum + $index;
+                $paddedNum = str_pad($newNum, $numLength, '0', STR_PAD_LEFT);
+
+                return $prefix . $paddedNum;
+            }
+
+            // If no number pattern, just append index
+            return $baseKode . '-' . ($index + 1);
+        };
+
         if ($stok > 1 && !empty($items)) {
+            // Multiple items with auto-generated kode_barang
+            $kodeBarangBase = $request->kode_barang_base;
+
+            if (!$kodeBarangBase) {
+                return redirect()->back()->withErrors(['kode_barang_base' => 'Kode barang dasar wajib diisi untuk stok lebih dari 1!']);
+            }
+
             foreach ($items as $index => $item) {
+                // Auto-generate sequential kode_barang
+                $kodeBarang = $generateKodeBarang($kodeBarangBase, $index);
+
                 $alat = Alat::create([
                     'nama_alat' => $request->nama_alat,
-                    'kode_barang' => $item['kode_barang'] ?? null,
+                    'kode_barang' => $kodeBarang,
                     'id_kategori' => $request->id_kategori,
-                    'stok' => 1, // Each record has stock of 1
-                    'lokasi' => $item['lokasi'] ?? $request->lokasi, // Use item location or default location
+                    'stok' => 1,
+                    'lokasi' => $request->lokasi,
                     'deskripsi' => $request->deskripsi,
                     'kondisi' => $item['kondisi'] ?? 'baik',
                 ]);
             }
-            $this->logActivity('Menambahkan alat baru: ' . $request->nama_alat . ' (' . count($items) . ' item dengan kode barang berbeda)');
+
+            $this->logActivity('Menambahkan alat baru: ' . $request->nama_alat . ' (' . $stok . ' item dengan kode barang berurutan dari ' . $kodeBarangBase . ')');
         } else {
             // Single item or stock = 1
             $alat = Alat::create([
                 'nama_alat' => $request->nama_alat,
-                'kode_barang' => $request->kode_barang ?? null, // Use single code_barang from form
+                'kode_barang' => $request->kode_barang ?? null,
                 'id_kategori' => $request->id_kategori,
                 'stok' => $stok,
                 'lokasi' => $request->lokasi,
                 'deskripsi' => $request->deskripsi,
-                'kondisi' => 'baik', // Default condition for bulk stock
+                'kondisi' => 'baik',
             ]);
-            
+
             $logMessage = 'Menambahkan alat baru: ' . $request->nama_alat . ' (stok: ' . $stok . ')';
             if ($request->kode_barang) {
                 $logMessage .= ' (Kode: ' . $request->kode_barang . ')';
@@ -193,6 +220,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'nama_alat' => 'required|string|max:255',
+            'kode_barang' => 'nullable|string|max:255',
             'id_kategori' => 'required|exists:kategori,id_kategori',
             'stok' => 'required|integer|min:0',
             'tambah_stok' => 'nullable|integer|min:0',
@@ -209,6 +237,7 @@ class AdminController extends Controller
 
         $alat->update([
             'nama_alat' => $request->nama_alat,
+            'kode_barang' => $request->kode_barang,
             'id_kategori' => $request->id_kategori,
             'stok' => $newStock,
             'lokasi' => $request->lokasi,

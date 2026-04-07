@@ -13,8 +13,8 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Admin routes
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+// Admin routes - with admin role middleware
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
     Route::post('/users', [AdminController::class, 'storeUser'])->name('storeUser');
@@ -43,8 +43,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/api/peminjaman/riwayat/{username}', [AdminController::class, 'getRiwayatPeminjaman'])->name('riwayat.peminjaman');
 });
 
-// Peminjam routes - separate group to avoid conflicts
-Route::middleware(['auth'])->prefix('peminjam')->name('peminjam.')->group(function () {
+// Peminjam routes - with borrower role middleware
+Route::middleware(['auth', 'peminjam'])->prefix('peminjam')->name('peminjam.')->group(function () {
     Route::get('/dashboard', [PeminjamanController::class, 'index'])->name('dashboard');
     Route::get('/profile', [PeminjamanController::class, 'profile'])->name('profile');
     Route::get('/settings', [PeminjamanController::class, 'settings'])->name('settings');
@@ -59,16 +59,19 @@ Route::middleware(['auth'])->prefix('peminjam')->name('peminjam.')->group(functi
     Route::post('/store-return', [PeminjamanController::class, 'storeReturn'])->name('storeReturn');
 });
 
-// Petugas routes - separate group to avoid conflicts
-Route::middleware(['auth'])->prefix('petugas')->name('petugas.')->group(function () {
+// Petugas routes - with petugas role middleware
+Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->group(function () {
     Route::get('/', [\App\Http\Controllers\PetugasController::class, 'dashboard'])->name('dashboard');
     Route::get('/peminjaman', [\App\Http\Controllers\PetugasController::class, 'peminjaman'])->name('peminjaman');
     Route::get('/api/peminjaman/{id}/details', [\App\Http\Controllers\PetugasController::class, 'getPeminjamanDetails'])->name('peminjaman.details');
     Route::post('/peminjaman/{id}/approve', [\App\Http\Controllers\PetugasController::class, 'approvePeminjaman'])->name('peminjaman.approve');
     Route::post('/peminjaman/{id}/reject', [\App\Http\Controllers\PetugasController::class, 'rejectPeminjaman'])->name('peminjaman.reject');
+    Route::delete('/peminjaman/{id}', [\App\Http\Controllers\PetugasController::class, 'deletePeminjaman'])->name('deletePeminjaman');
     Route::get('/pengembalian', [\App\Http\Controllers\PetugasController::class, 'pengembalian'])->name('pengembalian');
     Route::post('/pengembalian', [\App\Http\Controllers\PetugasController::class, 'storePengembalian'])->name('pengembalian.store');
     Route::delete('/pengembalian/{id}', [\App\Http\Controllers\PetugasController::class, 'deletePengembalian'])->name('deletePengembalian');
+    Route::post('/pengembalian/{id}/confirm-returned', [\App\Http\Controllers\PetugasController::class, 'confirmReturned'])->name('confirmReturned');
+    Route::get('/api/pengembalian/{id}/details', [\App\Http\Controllers\PetugasController::class, 'getPengembalianDetails'])->name('api.pengembalian.details');
     Route::get('/laporan', [\App\Http\Controllers\PetugasController::class, 'laporan'])->name('laporan');
     Route::get('/export-pengembalian', [\App\Http\Controllers\PetugasController::class, 'exportPengembalian'])->name('export-pengembalian');
 });

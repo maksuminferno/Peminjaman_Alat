@@ -11,7 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Middleware aliases removed
+        // Register middleware aliases
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\CheckStrictAdminRole::class,
+            'peminjam' => \App\Http\Middleware\CheckBorrowerRole::class,
+            'petugas' => \App\Http\Middleware\CheckPetugasRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

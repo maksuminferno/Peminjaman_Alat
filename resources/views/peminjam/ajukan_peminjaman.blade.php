@@ -35,6 +35,14 @@
                             </div>
                         @endif
 
+                        {{-- Debug info - remove after testing --}}
+                        @if(session('debug_form_data'))
+                            <div class="alert alert-info">
+                                <strong>Debug Form Data:</strong>
+                                <pre>{{ json_encode(session('debug_form_data'), JSON_PRETTY_PRINT) }}</pre>
+                            </div>
+                        @endif
+
                         <!-- Multiple Alat Selection (from tools page) -->
                         @if(isset($groupedAlatList) && $groupedAlatList->count() > 0)
                         <div class="mb-4">
@@ -54,32 +62,39 @@
                                     <tbody>
                                         @foreach($groupedAlatList as $namaAlat => $tools)
                                             @php
-                                                $totalStock = $tools->sum('stok');
-                                                $firstTool = $tools->first();
-                                                $toolIds = $tools->pluck('id_alat')->toArray();
+                                                $totalStock = $tools->alatTersedia->sum('stok');
+                                                $firstTool = $tools->firstTool ?? $tools->first();
+                                                $toolIds = $tools->alatTersedia->pluck('id_alat')->toArray();
+                                                $rowIndex = $loop->index;
                                             @endphp
                                         <tr>
                                             <td>{{ $namaAlat }}</td>
                                             <td>{{ $firstTool->kategori->nama_kategori }}</td>
                                             <td>{{ $totalStock }}</td>
                                             <td>
-                                                <select class="form-select kode_barang_select" name="kode_barang[{{ $firstTool->id_alat }}]" data-index="{{ $firstTool->id_alat }}" required>
+                                                <select class="form-select kode_barang_select" name="kode_barang[{{ $rowIndex }}]"
+                                                        data-row-index="{{ $rowIndex }}"
+                                                        required>
                                                     <option value="">-- Pilih Kode Barang --</option>
                                                     @foreach($tools->alatTersedia ?? [] as $alatItem)
                                                     <option value="{{ $alatItem->kode_barang }}"
+                                                            data-id-alat="{{ $alatItem->id_alat }}"
                                                             data-lokasi="{{ $alatItem->lokasi }}"
                                                             data-stok="{{ $alatItem->stok }}">
                                                         {{ $alatItem->kode_barang }} - {{ $alatItem->lokasi }} (Stok: {{ $alatItem->stok }}, Kondisi: {{ $alatItem->kondisi ?? 'N/A' }})
                                                     </option>
                                                     @endforeach
                                                 </select>
+                                                <input type="hidden" name="alat_id[{{ $rowIndex }}]" class="alat_id_hidden" value="">
                                             </td>
                                             <td>
-                                                <span class="lokasi_display_{{ $firstTool->id_alat }} text-muted">-</span>
+                                                <span class="lokasi_display_{{ $rowIndex }} text-muted">-</span>
                                             </td>
                                             <td>
-                                                <input type="number" name="alat[{{ $firstTool->id_alat }}]"
-                                                    class="form-control" min="1" max="{{ $totalStock }}" value="1"
+                                                <input type="number" name="alat[{{ $rowIndex }}]"
+                                                    class="form-control jumlah_input"
+                                                    data-row-index="{{ $rowIndex }}"
+                                                    min="1" max="{{ $totalStock }}" value="1"
                                                     style="width: 100px;" required>
                                             </td>
                                         </tr>
@@ -260,12 +275,34 @@
         // Handle multiple alat kode_barang change
         document.querySelectorAll('.kode_barang_select').forEach(function(select) {
             select.addEventListener('change', function() {
-                const index = this.getAttribute('data-index');
+                const rowIndex = this.getAttribute('data-row-index');
                 const selectedOption = this.options[this.selectedIndex];
                 const lokasi = selectedOption.getAttribute('data-lokasi');
-                const lokasiDisplay = document.querySelector('.lokasi_display_' + index);
+                const stok = selectedOption.getAttribute('data-stok');
+                const idAlat = selectedOption.getAttribute('data-id-alat');
+
+                // Update lokasi display
+                const lokasiDisplay = document.querySelector('.lokasi_display_' + rowIndex);
                 if (lokasiDisplay) {
                     lokasiDisplay.textContent = lokasi || '-';
+                }
+
+                // Update the hidden alat_id field with the selected id_alat
+                const alatIdHidden = document.querySelector('.alat_id_hidden[data-row-index="' + rowIndex + '"]') || 
+                                     document.querySelector('input[name="alat_id[' + rowIndex + ']"]');
+                if (alatIdHidden && idAlat) {
+                    alatIdHidden.value = idAlat;
+                }
+
+                // Update max value for jumlah input
+                const jumlahInput = document.querySelector('.jumlah_input[data-row-index="' + rowIndex + '"]');
+                if (jumlahInput) {
+                    jumlahInput.max = stok || 999;
+
+                    // Reset value if it exceeds new max
+                    if (parseInt(jumlahInput.value) > parseInt(stok)) {
+                        jumlahInput.value = 1;
+                    }
                 }
             });
         });

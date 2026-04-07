@@ -117,7 +117,7 @@ class PeminjamanController extends Controller
         // Get peminjaman with pengembalian relation
         $query = Peminjaman::with(['detailPeminjaman.alat', 'pengembalian'])
             ->where('id_user', $user->id_user)
-            ->orderBy('tanggal_pinjam', 'desc');
+            ->orderBy('updated_at', 'asc');
 
         // Filter by status
         if ($request->filled('status')) {
@@ -180,10 +180,16 @@ class PeminjamanController extends Controller
             
             // Get available items for each grouped tool
             foreach ($groupedAlatList as $namaAlat => $tools) {
-                $firstTool = $tools->first();
-                $groupedAlatList[$namaAlat]->alatTersedia = Alat::where('nama_alat', $namaAlat)
+                $alatTersedia = Alat::where('nama_alat', $namaAlat)
+                    ->with('kategori')
                     ->orderBy('kode_barang', 'asc')
-                    ->get(['id_alat', 'nama_alat', 'kode_barang', 'lokasi', 'stok', 'kondisi']);
+                    ->get(['id_alat', 'nama_alat', 'kode_barang', 'lokasi', 'stok', 'kondisi', 'id_kategori']);
+
+                $firstTool = $alatTersedia->first();
+
+                // Store firstTool data explicitly for the view
+                $groupedAlatList[$namaAlat]->alatTersedia = $alatTersedia;
+                $groupedAlatList[$namaAlat]->firstTool = $firstTool;
             }
             
             return view('peminjam.ajukan_peminjaman', compact('groupedAlatList'));
@@ -235,10 +241,17 @@ class PeminjamanController extends Controller
             'alasan' => 'required|string|max:1000',
         ]);
 
-        $alat = Alat::findOrFail($request->id_alat);
+        // Validate that the kode_barang belongs to the id_alat
+        $alat = Alat::where('id_alat', $request->id_alat)
+            ->where('kode_barang', $request->kode_barang)
+            ->first();
+
+        if (!$alat) {
+            return redirect()->back()->withErrors(['error' => "Kode barang '{$request->kode_barang}' tidak cocok dengan alat yang dipilih"]);
+        }
 
         if ($alat->stok < $request->jumlah) {
-            return redirect()->back()->withErrors(['jumlah' => 'Jumlah alat yang tersedia tidak mencukupi']);
+            return redirect()->back()->withErrors(['jumlah' => "Jumlah alat {$alat->nama_alat} ({$request->kode_barang}) yang tersedia tidak mencukupi"]);
         }
 
         DB::beginTransaction();
@@ -284,22 +297,60 @@ class PeminjamanController extends Controller
         $request->validate([
             'alat' => 'required|array|min:1',
             'alat.*' => 'required|integer|min:1',
-            'kode_barang' => 'required',
+            'alat_id' => 'required|array',
+            'alat_id.*' => 'required|exists:alat,id_alat',
+            'kode_barang' => 'required|array',
             'kode_barang.*' => 'required|string|exists:alat,kode_barang',
             'tanggal_kembali_rencana' => 'required|date|after:today',
             'alasan' => 'required|string|max:1000',
         ]);
 
-        // Validate stock for each tool (using grouped IDs)
-        foreach ($request->alat as $idAlat => $jumlah) {
-            // id_alat bisa berupa string comma-separated dari grouped tools
-            $ids = is_string($idAlat) ? explode(',', $idAlat) : [$idAlat];
+        // DEBUG: Log submitted data
+        \Log::debug('storeBorrowMultiple - Request Data:', [
+            'alat' => $request->alat,
+            'alat_id' => $request->alat_id,
+            'kode_barang' => $request->kode_barang,
+            'all_request_data' => $request->all(),
+        ]);
+
+        // Validate stock for each tool and ensure kode_barang matches id_alat
+        foreach ($request->alat as $index => $jumlah) {
+            // Get the actual id_alat from the alat_id array
+            $idAlat = $request->alat_id[$index] ?? null;
             
-            foreach ($ids as $id) {
-                $alat = Alat::findOrFail($id);
-                if ($alat->stok < $jumlah) {
-                    return redirect()->back()->withErrors(['alat' => "Stok {$alat->nama_alat} tidak mencukupi (tersedia: {$alat->stok})"]);
-                }
+            if (!$idAlat) {
+                return redirect()->back()->withErrors(['error' => "Baris ke-" . ($index + 1) . ": Alat tidak dipilih"]);
+            }
+
+            // Get the kode_barang for this index
+            $kodeBarang = $request->kode_barang[$index] ?? null;
+
+            \Log::debug('Validation attempt:', [
+                'index' => $index,
+                'id_alat' => $idAlat,
+                'kode_barang' => $kodeBarang,
+                'jumlah' => $jumlah,
+            ]);
+
+            // Validate that the kode_barang belongs to the id_alat
+            $alat = Alat::where('id_alat', $idAlat)
+                ->where('kode_barang', $kodeBarang)
+                ->first();
+
+            if (!$alat) {
+                $foundByKode = Alat::where('kode_barang', $kodeBarang)->first();
+                \Log::debug('Mismatch found:', [
+                    'submitted_id_alat' => $idAlat,
+                    'found_id_alat_by_kode' => $foundByKode ? $foundByKode->id_alat : null,
+                    'kode_barang' => $kodeBarang,
+                    'jumlah_requested' => $jumlah,
+                ]);
+
+                return redirect()->back()->withErrors(['error' => "Kode barang '{$kodeBarang}' tidak cocok dengan alat yang dipilih (ID: {$idAlat})"]);
+            }
+
+            if ($alat->stok < $jumlah) {
+                return redirect()->back()->withErrors(['alat' => "Stok {$alat->nama_alat} ({$kodeBarang}) tidak mencukupi (tersedia: {$alat->stok})"]);
             }
         }
 
@@ -319,22 +370,20 @@ class PeminjamanController extends Controller
             ]);
 
             // Create detail borrowing record for EACH tool with kode_barang
-            foreach ($request->alat as $idAlat => $jumlah) {
-                // Handle kode_barang that could be string or array
-                $kodeBarang = null;
-                if (is_array($request->kode_barang)) {
-                    $kodeBarang = $request->kode_barang[$idAlat] ?? null;
-                } else {
-                    $kodeBarang = $request->kode_barang;
-                }
-                
-                // If id_alat is comma-separated (grouped), use the first one
-                $ids = is_string($idAlat) ? explode(',', $idAlat) : [$idAlat];
-                
-                // Create detail for the first ID in the group
+            foreach ($request->alat as $index => $jumlah) {
+                // Get the actual id_alat from alat_id array
+                $idAlat = $request->alat_id[$index] ?? null;
+                $kodeBarang = $request->kode_barang[$index] ?? null;
+
+                // Find the exact alat record that matches both id_alat and kode_barang
+                $alat = Alat::where('id_alat', $idAlat)
+                    ->where('kode_barang', $kodeBarang)
+                    ->firstOrFail();
+
+                // Create detail for this specific alat
                 DetailPeminjaman::create([
                     'id_peminjaman' => $peminjaman->id_peminjaman,
-                    'id_alat' => $ids[0],
+                    'id_alat' => $alat->id_alat,
                     'kode_barang' => $kodeBarang,
                     'jumlah' => $jumlah,
                 ]);
@@ -343,9 +392,21 @@ class PeminjamanController extends Controller
             // Log activity - get all tool names
             $alatNames = [];
             foreach ($request->alat as $idAlat => $jumlah) {
-                $ids = is_string($idAlat) ? explode(',', $idAlat) : [$idAlat];
-                $alat = Alat::findOrFail($ids[0]);
-                $alatNames[] = "{$alat->nama_alat} ({$jumlah})";
+                // Handle kode_barang that could be string or array
+                $kodeBarang = null;
+                if (is_array($request->kode_barang)) {
+                    $kodeBarang = $request->kode_barang[$idAlat] ?? null;
+                } else {
+                    $kodeBarang = $request->kode_barang;
+                }
+
+                $alat = Alat::where('id_alat', $idAlat)
+                    ->where('kode_barang', $kodeBarang)
+                    ->first();
+                
+                if ($alat) {
+                    $alatNames[] = "{$alat->nama_alat} - {$kodeBarang} ({$jumlah})";
+                }
             }
             
             LogAktivitas::create([

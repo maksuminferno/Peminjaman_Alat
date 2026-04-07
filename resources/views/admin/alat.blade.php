@@ -136,17 +136,31 @@
                             <input type="text" class="form-control" id="kode_barang" name="kode_barang" placeholder="Masukkan kode barang">
                             <div class="form-text">Kode unik untuk identifikasi alat ini</div>
                         </div>
-                        
+
+                        <!-- Kode Barang Dasar untuk stok > 1 (auto-generate) -->
+                        <div id="kodeBarangBase" class="mb-3" style="display: none;">
+                            <label for="kode_barang_base" class="form-label">Kode Barang Dasar</label>
+                            <input type="text" class="form-control" id="kode_barang_base" name="kode_barang_base" placeholder="Contoh: label-1">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Sistem akan otomatis membuat kode berurutan. Contoh: <code>label-1</code> → <code>label-2</code>, <code>label-3</code>, dst.
+                            </div>
+                            <div id="kodePreview" class="mt-2" style="display: none;">
+                                <small class="text-muted">Preview kode yang akan dibuat:</small>
+                                <div id="kodePreviewList" class="bg-light p-2 rounded" style="max-height: 100px; overflow-y: auto; font-size: 0.85rem;"></div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="deskripsi" class="form-label">Deskripsi</label>
                             <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3" placeholder="Masukkan deskripsi alat"></textarea>
                         </div>
 
-                        <!-- Dynamic Items Section (shown when stock > 1) -->
+                        <!-- Lokasi untuk setiap item (stock > 1) -->
                         <div id="itemsSection" style="display: none;">
                             <div class="card bg-light">
                                 <div class="card-header">
-                                    <h6 class="mb-0"><i class="fas fa-barcode me-2"></i>Detail Kode Barang per Item</h6>
+                                    <h6 class="mb-0"><i class="fas fa-boxes me-2"></i>Daftar Item</h6>
                                 </div>
                                 <div class="card-body" id="itemsContainer">
                                     <!-- Dynamic items will be added here -->
@@ -177,12 +191,17 @@
                         @csrf
                         @method('PUT')
                         <div class="row">
-                            <div class="col-md-12 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label for="edit_nama_alat" class="form-label">Nama Alat</label>
                                 <input type="text" class="form-control" id="edit_nama_alat" name="nama_alat" required list="editAlatSuggestions">
                                 <datalist id="editAlatSuggestions">
                                     <!-- Options will be populated dynamically based on selected category -->
                                 </datalist>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_kode_barang" class="form-label">Kode Barang</label>
+                                <input type="text" class="form-control" id="edit_kode_barang" name="kode_barang" placeholder="Masukkan kode barang">
+                                <div class="form-text">Kode unik untuk identifikasi alat</div>
                             </div>
                         </div>
                         <div class="row">
@@ -247,44 +266,36 @@
         const stok = parseInt(document.getElementById('stok').value) || 0;
         const itemsSection = document.getElementById('itemsSection');
         const kodeBarangSingle = document.getElementById('kodeBarangSingle');
+        const kodeBarangBase = document.getElementById('kodeBarangBase');
         const itemsContainer = document.getElementById('itemsContainer');
 
         if (stok === 1) {
             // Show single code barang field
             itemsSection.style.display = 'none';
             kodeBarangSingle.style.display = 'block';
+            kodeBarangBase.style.display = 'none';
             itemsContainer.innerHTML = '';
         } else if (stok > 1) {
-            // Show multiple items section
+            // Show base code field and location inputs
             kodeBarangSingle.style.display = 'none';
+            kodeBarangBase.style.display = 'block';
             itemsSection.style.display = 'block';
             itemsContainer.innerHTML = '';
 
             for (let i = 0; i < stok; i++) {
                 const itemHtml = `
-                    <div class="card mb-2">
-                        <div class="card-body py-2">
-                            <div class="row align-items-end">
-                                <div class="col-md-3">
-                                    <label class="form-label small">Kode Barang #${i + 1}</label>
-                                    <input type="text" class="form-control form-control-sm" name="items[${i}][kode_barang]" placeholder="Kode barang">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small">Lokasi</label>
-                                    <input type="text" class="form-control form-control-sm" name="items[${i}][lokasi]" placeholder="Lokasi item">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small">Kondisi</label>
-                                    <select class="form-select form-select-sm" name="items[${i}][kondisi]" required>
-                                        <option value="">-- Pilih --</option>
-                                        <option value="baik">Baik</option>
-                                        <option value="diperbaiki">Diperbaiki</option>
-                                        <option value="rusak">Rusak</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <small class="text-muted">Item #${i + 1}</small>
-                                </div>
+                    <div class="mb-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-2">
+                                <small class="text-muted fw-bold">Item #${i + 1}</small>
+                            </div>
+                            <div class="col-md-6">
+                                <select class="form-select form-select-sm" name="items[${i}][kondisi]" required>
+                                    <option value="">-- Kondisi --</option>
+                                    <option value="baik" selected>Baik</option>
+                                    <option value="diperbaiki">Diperbaiki</option>
+                                    <option value="rusak">Rusak</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -294,9 +305,71 @@
         } else {
             itemsSection.style.display = 'none';
             kodeBarangSingle.style.display = 'block';
+            kodeBarangBase.style.display = 'none';
             itemsContainer.innerHTML = '';
         }
     }
+
+    // Generate sequential kode_barang and show preview
+    document.addEventListener('DOMContentLoaded', function() {
+        const kodeBarangBaseInput = document.getElementById('kode_barang_base');
+        const stokInput = document.getElementById('stok');
+        const kodePreview = document.getElementById('kodePreview');
+        const kodePreviewList = document.getElementById('kodePreviewList');
+
+        function generateKodePreview() {
+            const baseKode = kodeBarangBaseInput.value.trim();
+            const stok = parseInt(stokInput.value) || 0;
+
+            if (!baseKode || stok <= 1) {
+                kodePreview.style.display = 'none';
+                return;
+            }
+
+            // Parse base code to extract prefix and number
+            // Support patterns like: label-1, BRG001, item_001, etc.
+            let generatedKodes = [];
+
+            // Try to match pattern: text + separator + number
+            const match = baseKode.match(/^(.*?)(\d+)$/);
+
+            if (match) {
+                const prefix = match[1];
+                const startNum = parseInt(match[2]);
+                const numLength = match[2].length; // Preserve zero-padding
+
+                for (let i = 0; i < Math.min(stok, 10); i++) { // Show max 10 previews
+                    const num = startNum + i;
+                    const paddedNum = String(num).padStart(numLength, '0');
+                    generatedKodes.push(`${prefix}${paddedNum}`);
+                }
+
+                if (stok > 10) {
+                    generatedKodes.push(`... dan ${stok - 10} kode lainnya`);
+                }
+            } else {
+                // If no number pattern, just append index
+                for (let i = 0; i < Math.min(stok, 10); i++) {
+                    generatedKodes.push(`${baseKode}-${i + 1}`);
+                }
+
+                if (stok > 10) {
+                    generatedKodes.push(`... dan ${stok - 10} kode lainnya`);
+                }
+            }
+
+            kodePreviewList.innerHTML = generatedKodes.map(k => `<div><code>${k}</code></div>`).join('');
+            kodePreview.style.display = 'block';
+        }
+
+        if (kodeBarangBaseInput) {
+            kodeBarangBaseInput.addEventListener('input', generateKodePreview);
+        }
+
+        if (stokInput) {
+            stokInput.addEventListener('change', generateKodePreview);
+        }
+    });
 
     // Validate form before submit
     document.getElementById('addAlatForm').addEventListener('submit', function(e) {
@@ -313,22 +386,19 @@
                 kodeBarangInput.classList.remove('is-invalid');
             }
         } else if (stok > 1) {
-            // Validate multiple items kode barang
-            const kodeBarangInputs = this.querySelectorAll('input[name^="items["][name$="[kode_barang]"]');
-
-            kodeBarangInputs.forEach((input, index) => {
-                if (!input.value.trim()) {
-                    hasError = true;
-                    input.classList.add('is-invalid');
-                } else {
-                    input.classList.remove('is-invalid');
-                }
-            });
+            // Validate base kode barang
+            const kodeBarangBaseInput = document.getElementById('kode_barang_base');
+            if (kodeBarangBaseInput && !kodeBarangBaseInput.value.trim()) {
+                hasError = true;
+                kodeBarangBaseInput.classList.add('is-invalid');
+            } else if (kodeBarangBaseInput) {
+                kodeBarangBaseInput.classList.remove('is-invalid');
+            }
         }
 
         if (hasError) {
             e.preventDefault();
-            alert('Mohon isi kode barang untuk semua item!');
+            alert('Mohon isi kode barang!');
         }
     });
 
@@ -338,6 +408,7 @@
             .then(response => response.json())
             .then(data => {
                 document.getElementById('edit_nama_alat').value = data.nama_alat;
+                document.getElementById('edit_kode_barang').value = data.kode_barang || '';
                 document.getElementById('edit_id_kategori').value = data.id_kategori;
                 document.getElementById('edit_stok_display').value = data.stok;
                 document.getElementById('edit_stok').value = data.stok;

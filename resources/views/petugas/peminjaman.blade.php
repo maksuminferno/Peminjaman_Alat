@@ -43,8 +43,9 @@
                             <th>Jumlah</th>
                             <th>Tanggal Pinjam</th>
                             <th>Tanggal Kembali Rencana</th>
+                            <th>Alasan Peminjaman</th>
                             <th>Status</th>
-                            <th>Aksi</th>
+
                         </tr>
                     </thead>
                     <tbody>
@@ -72,6 +73,15 @@
                             </td>
                             <td>{{ \Carbon\Carbon::parse($peminjamanItem->tanggal_pinjam)->format('d M Y') }}</td>
                             <td>{{ \Carbon\Carbon::parse($peminjamanItem->tanggal_kembali_rencana)->format('d M Y') }}</td>
+                            <td>
+                                @if($peminjamanItem->alasan)
+                                    <span class="text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ $peminjamanItem->alasan }}">
+                                        <i class="fas fa-info-circle me-1" style="color: #ff8c42;"></i>{{ Str::limit($peminjamanItem->alasan, 50) }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>
                                 <span class="status-badge
                                     @if($peminjamanItem->status == 'dipinjam') status-dipinjam
@@ -107,17 +117,7 @@
                             </td>
                         </tr>
                         @empty
-                        <tr>
-                            <td class="text-center">Tidak ada data pengajuan peminjaman</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                        </tr>
+                     
                         @endforelse
                     </tbody>
                 </table>
@@ -142,7 +142,9 @@
                             <th>Jumlah</th>
                             <th>Tanggal Pinjam</th>
                             <th>Tanggal Kembali Rencana</th>
+                            <th>Alasan Peminjaman</th>
                             <th>Status</th>
+                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -171,6 +173,15 @@
                             <td>{{ \Carbon\Carbon::parse($peminjamanItem->tanggal_pinjam)->format('d M Y') }}</td>
                             <td>{{ \Carbon\Carbon::parse($peminjamanItem->tanggal_kembali_rencana)->format('d M Y') }}</td>
                             <td>
+                                @if($peminjamanItem->alasan)
+                                    <span class="text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ $peminjamanItem->alasan }}">
+                                        <i class="fas fa-info-circle me-1" style="color: #ff8c42;"></i>{{ Str::limit($peminjamanItem->alasan, 50) }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td>
                                 <span class="status-badge
                                     @if($peminjamanItem->status == 'dipinjam') status-dipinjam
                                     @elseif($peminjamanItem->status == 'terlambat') status-belum_dikembalikan
@@ -178,17 +189,19 @@
                                     {{ ucfirst(str_replace('_', ' ', $peminjamanItem->status)) }}
                                 </span>
                             </td>
+                            <td>
+                                <form action="{{ route('petugas.deletePeminjaman', ['id' => $peminjamanItem->id_peminjaman]) }}" method="POST" style="display:inline;" onsubmit="return confirm('PERINGATAN: Tindakan ini akan menghapus peminjaman dan mengembalikan stok alat. Apakah Anda yakin?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i>Hapus
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td class="text-center">Tidak ada alat yang sedang dipinjam</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
+                            <td colspan="10" class="text-center">Tidak ada alat yang sedang dipinjam</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -443,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Check if table is empty
                             const tbody = document.querySelector('#peminjamanTable tbody');
                             if (tbody.querySelectorAll('tr').length === 0) {
-                                tbody.innerHTML = '<tr><td colspan="9" class="text-center">Tidak ada pengajuan peminjaman</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="10" class="text-center">Tidak ada pengajuan peminjaman</td></tr>';
                             }
                         }, 300);
                     }
@@ -537,6 +550,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     console.log('[View] All event handlers attached.');
+
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
 </script>
 @endsection

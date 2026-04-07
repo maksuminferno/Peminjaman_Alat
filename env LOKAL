@@ -1,0 +1,57 @@
+APP_ENV=local
+APP_DEBUG=true
+APP_KEY=base64:kxvPZ+gCi0PvXgKy1z5NTHOOPf6xBcrLkD0pUmw14Vk=
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=peminjaman_alat
+DB_USERNAME=root
+DB_PASSWORD=
+
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
+APP_MAINTENANCE_DRIVER=file
+# ===== Maintenance =====
+APP_MAINTENANCE_DRIVER=file
+
+# ===== Security =====
+BCRYPT_ROUNDS=12
+
+# ===== Logging =====
+LOG_CHANNEL=stack
+LOG_STACK=single
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+# ===== Session =====
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_PATH=/
+SESSION_DOMAIN=null
+
+# ===== Broadcasting / Queue =====
+BROADCAST_CONNECTION=log
+QUEUE_CONNECTION=database
+
+# ===== Cache =====
+CACHE_STORE=file
+# CACHE_PREFIX=
+
+# ===== Redis =====
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+# ===== Mail =====
+MAIL_MAILER=log
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
+
+# ===== Denda Configuration =====
+DENDA_KETERLAMBATAN_PER_HARI=10000
+DENDA_KERUSAKAN_DEFAULT=50000
+DENDA_KEHILANGAN=500000

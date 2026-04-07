@@ -31,7 +31,7 @@
                     <thead>
                         <tr>
                             <th>ID Pengembalian</th>
-                            <th>ID Peminjaman</th>
+                       
                             <th>Nama Peminjam</th>
                             <th>Alat</th>
                             <th>Tanggal Pinjam</th>
@@ -48,7 +48,7 @@
                         @forelse($recentPengembalian as $pengembalian)
                         <tr>
                             <td>{{ sprintf('PGB%03d', $pengembalian->id_pengembalian) }}</td>
-                            <td>{{ sprintf('PJN%03d', $pengembalian->peminjaman->id_peminjaman) }}</td>
+                           
                             <td>{{ $pengembalian->peminjaman->user->nama ?? 'N/A' }}</td>
                             <td>
                                 @foreach($pengembalian->peminjaman->detailPeminjaman as $index => $detail)

@@ -43,18 +43,14 @@
 
     <!-- Active Borrowings Table -->
     <div class="card card-custom table-custom">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div class="card-header bg-white py-3">
             <h5 class="mb-0"><i class="fas fa-list me-2 text-orange"></i>Daftar Alat Dipinjam</h5>
-            <button type="button" class="btn btn-orange" id="btnReturnSelected" onclick="returnSelected()" disabled>
-                <i class="fas fa-calendar-check me-2"></i>Kembalikan Alat Dipilih
-            </button>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover datatable">
                     <thead>
                         <tr>
-                            <th width="50"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
                             <th>Kode Barang</th>
                             <th>Nama Alat</th>
                             <th>Jumlah Dipinjam</th>
@@ -77,16 +73,6 @@
                             })->toArray();
                         @endphp
                         <tr>
-                            <td>
-                                @if($peminjaman->status == 'dipinjam' || $peminjaman->status == 'terlambat')
-                                    <input type="checkbox" class="item-checkbox"
-                                        data-id-peminjaman="{{ $peminjaman->id_peminjaman }}"
-                                        data-details="{{ json_encode($detailsData) }}"
-                                        onchange="updateReturnButton()">
-                                @else
-                                    <span class="text-muted">-</span>
-                                @endif
-                            </td>
                             <td>
                                 @foreach($peminjaman->detailPeminjaman as $index => $detail)
                                     {{ $detail->kode_barang ?? '-' }}
@@ -150,7 +136,7 @@
                         </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center">Tidak ada alat yang sedang dipinjam</td>
+                                <td colspan="7" class="text-center">Tidak ada alat yang sedang dipinjam</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -234,51 +220,6 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal for Selected Items -->
-    <div class="modal fade" id="confirmReturnSelectedModal" tabindex="-1" aria-labelledby="confirmReturnSelectedModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="confirmReturnSelectedModalLabel">Konfirmasi Pengembalian Alat Dipilih</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="returnSelectedForm" method="POST" action="{{ route('peminjam.storeReturn') }}" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="id_peminjaman" id="peminjamanIdSelected">
-
-                        <div class="mb-3">
-                            <label class="form-label">Tanggal Pengembalian</label>
-                            <input type="text" class="form-control" id="tanggalKembaliSelected" readonly>
-                        </div>
-
-                        <div id="selectedEquipmentDetails">
-                            <!-- Selected equipment details will be populated dynamically -->
-                        </div>
-
-                        <div class="mb-3 mt-4">
-                            <label class="form-label"><i class="fas fa-camera me-2"></i>Foto Bukti Pengembalian</label>
-                            <input type="file" class="form-control" name="bukti_foto" id="buktiFotoSelected" accept="image/*" onchange="previewFotoSelected(this)">
-                            <div class="form-text">Upload foto kondisi alat saat dikembalikan (opsional, format: JPG, PNG, max 5MB)</div>
-                            <div id="fotoPreviewSelected" class="mt-2" style="display: none;">
-                                <img id="previewSelected" src="" alt="Preview Foto" class="img-thumbnail" style="max-width: 100%; max-height: 300px;">
-                                <button type="button" class="btn btn-sm btn-danger mt-2" onclick="hapusFotoSelected()">
-                                    <i class="fas fa-trash me-1"></i>Hapus Foto
-                                </button>
-                            </div>
-                        </div>
-
-                        <p class="text-center mt-3">Apakah Anda yakin ingin mengembalikan alat yang dipilih?</p>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" form="returnSelectedForm" class="btn btn-orange">Konfirmasi</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Alasan Ditolak Modal -->
     <div class="modal fade" id="alasanDitolakModal" tabindex="-1" aria-labelledby="alasanDitolakModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -308,9 +249,6 @@
 
 @section('scripts')
 <script>
-    // Store damage descriptions
-    window.damageDescriptions = {};
-
     // Set today's date for the return date field
     document.addEventListener('DOMContentLoaded', function() {
         const today = new Date().toLocaleDateString('id-ID', {
@@ -321,7 +259,6 @@
 
         // Set the return date to today
         document.getElementById('tanggalKembali').value = today;
-        document.getElementById('tanggalKembaliSelected').value = today;
 
         // Handle modal data population for individual return
         var confirmReturnModal = document.getElementById('confirmReturnModal');
@@ -344,7 +281,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Kondisi Alat</label>
-                                <select class="form-select" name="kondisi_alat[${index}]" id="kondisi_alat_${index}" onchange="handleConditionChange(this, ${index}, '${detail.nama_alat}', 'individual')">
+                                <select class="form-select" name="kondisi_alat[${index}]" id="kondisi_alat_${index}" onchange="handleConditionChange(this, ${index}, '${detail.nama_alat}')">
                                     <option value="baik" selected>Baik</option>
                                     <option value="rusak">Rusak</option>
                                 </select>
@@ -366,9 +303,9 @@
     });
 
     // Handle condition change - show/hide damage description field
-    function handleConditionChange(selectElement, index, alatName, modalType) {
+    function handleConditionChange(selectElement, index, alatName) {
         const damageField = document.getElementById(`damage_field_${index}`);
-        
+
         if (selectElement.value === 'rusak') {
             damageField.style.display = 'block';
         } else {
@@ -379,120 +316,6 @@
                 textarea.value = '';
             }
         }
-    }
-
-    // Toggle select all checkboxes
-    function toggleSelectAll() {
-        const selectAll = document.getElementById('selectAll');
-        const checkboxes = document.querySelectorAll('.item-checkbox');
-
-        checkboxes.forEach(function(checkbox) {
-            checkbox.checked = selectAll.checked;
-        });
-
-        updateReturnButton();
-    }
-
-    // Update return button state
-    function updateReturnButton() {
-        const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-        const btnReturn = document.getElementById('btnReturnSelected');
-
-        if (checkboxes.length > 0) {
-            btnReturn.disabled = false;
-            btnReturn.innerHTML = '<i class="fas fa-calendar-check me-2"></i>Kembalikan ' + checkboxes.length + ' Peminjaman Dipilih';
-        } else {
-            btnReturn.disabled = true;
-            btnReturn.innerHTML = '<i class="fas fa-calendar-check me-2"></i>Kembalikan Alat Dipilih';
-        }
-
-        // Uncheck select all if any checkbox is unchecked
-        const selectAll = document.getElementById('selectAll');
-        const allCheckboxes = document.querySelectorAll('.item-checkbox');
-        selectAll.checked = checkboxes.length === allCheckboxes.length;
-    }
-
-    // Return selected items
-    function returnSelected() {
-        const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-
-        if (checkboxes.length === 0) {
-            alert('Pilih minimal 1 peminjaman untuk dikembalikan');
-            return;
-        }
-
-        // Build equipment details from selected checkboxes
-        let allItems = [];
-        let peminjamanIds = [];
-
-        checkboxes.forEach(function(checkbox) {
-            const details = JSON.parse(checkbox.getAttribute('data-details'));
-            const idPeminjaman = checkbox.getAttribute('data-id-peminjaman');
-            peminjamanIds.push(idPeminjaman);
-
-            details.forEach(function(detail) {
-                allItems.push({
-                    id_peminjaman: idPeminjaman,
-                    id_alat: detail.id_alat,
-                    nama_alat: detail.nama_alat,
-                    jumlah: detail.jumlah
-                });
-            });
-        });
-
-        // Build the equipment details HTML
-        let equipmentDetailsHtml = '';
-        let globalIndex = 0;
-
-        // Group by peminjaman
-        const groupedByPeminjaman = {};
-        allItems.forEach(function(item) {
-            if (!groupedByPeminjaman[item.id_peminjaman]) {
-                groupedByPeminjaman[item.id_peminjaman] = [];
-            }
-            groupedByPeminjaman[item.id_peminjaman].push(item);
-        });
-
-        for (const [idPeminjaman, items] of Object.entries(groupedByPeminjaman)) {
-            equipmentDetailsHtml += `<div class="card mb-3"><div class="card-header bg-orange text-white">ID Peminjaman: PJN${idPeminjaman}</div><div class="card-body">`;
-
-            items.forEach(function(detail) {
-                equipmentDetailsHtml += `
-                    <div class="mb-3 pb-3" style="border-bottom: 1px solid #eee;">
-                        <h6 class="card-title">${detail.nama_alat}</h6>
-                        <div class="mb-2">
-                            <small class="text-muted">Kode Barang: <strong>${detail.kode_barang || '-'}</strong></small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Kondisi Alat</label>
-                            <select class="form-select" name="kondisi_alat[${globalIndex}]" id="kondisi_alat_${globalIndex}" onchange="handleConditionChange(this, ${globalIndex}, '${detail.nama_alat}', 'selected')">
-                                <option value="baik" selected>Baik</option>
-                                <option value="rusak">Rusak</option>
-                            </select>
-                        </div>
-                        <div class="mb-3 damage-description-field" id="damage_field_${globalIndex}" style="display: none;">
-                            <label class="form-label">Deskripsi Kerusakan <span class="text-danger">*</span></label>
-                            <textarea class="form-control" name="deskripsi_kerusakan[${globalIndex}]" rows="3" placeholder="Jelaskan kondisi kerusakan alat secara detail..."></textarea>
-                        </div>
-                        <input type="hidden" name="id_alat[${globalIndex}]" value="${detail.id_alat}">
-                        <input type="hidden" name="jumlah_dikembalikan[${globalIndex}]" value="${detail.jumlah}">
-                        <input type="hidden" name="id_peminjaman_item[${globalIndex}]" value="${idPeminjaman}">
-                    </div>
-                `;
-                globalIndex++;
-            });
-
-            equipmentDetailsHtml += `</div></div>`;
-        }
-
-        document.getElementById('selectedEquipmentDetails').innerHTML = equipmentDetailsHtml;
-
-        // Set the first peminjaman ID (for compatibility with controller)
-        document.getElementById('peminjamanIdSelected').value = peminjamanIds[0];
-
-        // Show the modal
-        var modal = new bootstrap.Modal(document.getElementById('confirmReturnSelectedModal'));
-        modal.show();
     }
 
     // Form validation and submit with AJAX for individual return
@@ -549,10 +372,7 @@
                 .then(async response => {
                     console.log('Response status:', response.status);
                     console.log('Response ok:', response.ok);
-                    
-                    // Clone response untuk logging jika error
-                    const responseClone = response.clone();
-                    
+                     v
                     if (!response.ok) {
                         // Coba baca error detail dari response
                         const errorText = await responseClone.text();

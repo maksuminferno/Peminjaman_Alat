@@ -8,7 +8,11 @@
       "Bash(c:\\laragon\\bin\\php\\php-8.3.16-win32-vs16-x64\\php.exe *)",
       "Bash(artisan *)",
       "Bash(c:\\laragon\\bin\\php\\php-8.2.12-win32-vs16-x64\\php.exe *)",
-      "Bash(c:\\laragon\\bin\\php\\php-8.3.17-win32-vs16-x64\\php.exe *)"
+      "Bash(c:\\laragon\\bin\\php\\php-8.3.17-win32-vs16-x64\\php.exe *)",
+      "Bash(c:\\\\laragon\\\\bin\\\\php\\\\php-8.3.16-win32-vs16-x64\\\\php.exe *)",
+      "Bash(c:\\laragon\\laragon.exe)",
+      "Bash(type *)",
+      "Bash(cmd *)"
     ]
   },
   "$version": 3
