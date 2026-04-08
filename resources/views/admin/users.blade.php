@@ -64,7 +64,7 @@
                                     <a href="{{ route('admin.editUser', ['id' => $user->id_user]) }}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-edit me-1"></i>Edit
                                     </a>
-                                    <form action="{{ route('admin.deleteUser', ['id' => $user->id_user]) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus user ini?')">
+                                    <form action="{{ route('admin.deleteUser', ['id' => $user->id_user]) }}" method="POST" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -112,8 +112,7 @@
                                 <input type="text" class="form-control" id="username" name="username" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" required>
+                                <label for="email" class="foraol" id="email" name="email" required>
                             </div>
                         </div>
                         <div class="row">

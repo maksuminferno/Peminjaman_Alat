@@ -61,7 +61,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <form action="{{ route('admin.deletePeminjaman', ['id' => $peminjamanItem->id_peminjaman]) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus peminjaman ini?')">
+                                    <form action="{{ route('admin.deletePeminjaman', ['id' => $peminjamanItem->id_peminjaman]) }}" method="POST" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger">

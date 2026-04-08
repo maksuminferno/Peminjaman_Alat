@@ -47,7 +47,7 @@
                                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="editKategori({{ $kategori->id_kategori }}, '{{ $kategori->nama_kategori }}')" data-bs-toggle="modal" data-bs-target="#editKategoriModal">
                                         <i class="fas fa-edit me-1"></i>Edit
                                     </button>
-                                    <form action="{{ route('admin.deleteKategori', ['id' => $kategori->id_kategori]) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus kategori ini?')">
+                                    <form action="{{ route('admin.deleteKategori', ['id' => $kategori->id_kategori]) }}" method="POST" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger">

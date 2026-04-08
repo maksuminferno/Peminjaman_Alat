@@ -543,6 +543,82 @@ class PetugasController extends Controller
             $data = json_decode($request->getContent(), true);
 
             $pengembalian = Pengembalian::findOrFail($id);
+            $peminjaman = $pengembalian->peminjaman;
+
+            // Update status peminjaman menjadi dikembalikan
+            $peminjaman->update([
+                'status' => 'dikembalikan'
+            ]);
+
+            // Calculate damage fine based on condition
+            $kondisi = $data['kondisi'] ?? 'baik';
+            $persenKerusakan = $data['persen_kerusakan'] ?? 0;
+            $hargaAlat = $data['harga_alat'] ?? 0;
+            $dendaKerusakan = $data['denda_kerusakan'] ?? 0;
+
+            // Update stock for each tool
+            $detailPeminjamanList = $peminjaman->detailPeminjaman;
+            $hasDamage = false;
+
+            foreach ($detailPeminjamanList as $detail) {
+                $alat = $detail->alat;
+
+                if ($kondisi === 'baik') {
+                    // Add back to stock if in good condition
+                    $alat->update(['stok' => $alat->stok + $detail->jumlah]);
+                } else {
+                    // Don't add to stock if damaged, mark as rusak
+                    $alat->update(['kondisi' => 'rusak']);
+                    $hasDamage = true;
+                }
+            }
+
+            // Update pengembalian with damage fine
+            if ($hasDamage && $dendaKerusakan > 0) {
+                $pengembalian->update([
+                    'kondisi_alat' => 'rusak',
+                    'denda_kerusakan' => $dendaKerusakan,
+                    'deskripsi_kerusakan' => "Kerusakan {$persenKerusakan}% - Harga alat: Rp " . number_format($hargaAlat, 0, ',', '.'),
+                    'denda' => $pengembalian->denda_keterlambatan + $dendaKerusakan
+                ]);
+
+                $this->logActivity("Konfirmasi pengembalian ID: {$id} - Alat RUSAK, Persentase: {$persenKerusakan}%, Denda Kerusakan: Rp " . number_format($dendaKerusakan, 0, ',', '.'));
+            } else {
+                $pengembalian->update([
+                    'kondisi_alat' => 'baik'
+                ]);
+
+                $this->logActivity("Konfirmasi pengembalian ID: {$id} - Alat dalam kondisi BAIK");
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengembalian berhasil dikonfirmasi!',
+                'denda_kerusakan' => $dendaKerusakan
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function tolakVerifikasi(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'alasan' => 'nullable|string'
+            ]);
+
+            $pengembalian = Pengembalian::findOrFail($id);
+            $peminjaman = $pengembalian->peminjaman;
+
+            // Reset peminjaman status back to 'menunggu verifikasi pengembalian' so borrower can re-upload
+            $peminjaman->update([
+                'status' => 'dipinjam',
+                'alasan_ditolak' => $request->alasan ?? 'Bukti foto tidak valid'
+            ]);
 
             // Hapus file foto jika ada
             if ($pengembalian->bukti_foto) {
@@ -552,19 +628,14 @@ class PetugasController extends Controller
                 }
             }
 
-            // If tool is damaged, log the damage info
-            if (isset($data['kondisi']) && $data['kondisi'] === 'rusak') {
-                $this->logActivity("Konfirmasi pengembalian ID: {$id} - Alat RUSAK, Persentase: {$data['persen_kerusakan']}%, Denda: Rp " . number_format($data['denda_kerusakan'] ?? 0));
-            } else {
-                $this->logActivity("Konfirmasi pengembalian ID: {$id} - Alat dalam kondisi BAIK");
-            }
-
-            // Hapus data pengembalian
+            // Delete the pengembalian record
             $pengembalian->delete();
+
+            $this->logActivity("Menolak verifikasi pengembalian ID: {$id} - Bukti foto tidak valid");
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data pengembalian berhasil dihapus!'
+                'message' => 'Verifikasi ditolak! Peminjam dapat upload ulang bukti foto.'
             ]);
         } catch (\Exception $e) {
             return response()->json([

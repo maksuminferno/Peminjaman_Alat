@@ -124,7 +124,8 @@
                                 @foreach($alat->alatTersedia ?? [] as $alatItem)
                                 <option value="{{ $alatItem->kode_barang }}"
                                         data-lokasi="{{ $alatItem->lokasi }}"
-                                        data-stok="{{ $alatItem->stok }}">
+                                        data-stok="{{ $alatItem->stok }}"
+                                        data-id-alat="{{ $alatItem->id_alat }}">
                                     {{ $alatItem->kode_barang }} - {{ $alatItem->lokasi }} (Stok: {{ $alatItem->stok }})
                                 </option>
                                 @endforeach
@@ -136,7 +137,9 @@
                             <input type="text" class="form-control" id="lokasi_display" readonly placeholder="Pilih kode barang untuk melihat lokasi">
                         </div>
 
-                        <input type="hidden" name="alat[{{ $alat->id_alat }}]" value="1">
+                        <!-- Hidden field for the actual alat ID (will be set when kode_barang is selected) -->
+                        <input type="hidden" name="id_alat" id="id_alat_hidden" value="">
+                        <input type="hidden" name="jumlah" id="jumlah_hidden" value="1">
                         @endif
 
                         <!-- Hidden field for tanggal_pinjam (will be set automatically to today) -->
@@ -263,12 +266,20 @@
         // Handle single alat kode_barang change
         const kodeBarangSelect = document.getElementById('kode_barang');
         const lokasiDisplay = document.getElementById('lokasi_display');
-        
+        const idAlatHidden = document.getElementById('id_alat_hidden');
+
         if (kodeBarangSelect && lokasiDisplay) {
             kodeBarangSelect.addEventListener('change', function() {
                 const selectedOption = this.options[this.selectedIndex];
                 const lokasi = selectedOption.getAttribute('data-lokasi');
+                const idAlat = selectedOption.getAttribute('data-id-alat');
+                
                 lokasiDisplay.value = lokasi || '-';
+                
+                // Set the correct id_alat based on selected kode_barang
+                if (idAlatHidden && idAlat) {
+                    idAlatHidden.value = idAlat;
+                }
             });
         }
 

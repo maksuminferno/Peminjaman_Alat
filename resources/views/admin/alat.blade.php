@@ -12,27 +12,45 @@
                 <p class="text-muted mb-0">Kelola peralatan sistem</p>
             </div>
             <div>
-              
-                
+
+
             </div>
         </div>
     </div>
+
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
 
     <!-- Equipment Table -->
     <div class="card card-custom table-custom">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-list me-2 text-orange"></i>Daftar Pengguna</h5>
                <div class="mb-4">
-  <button type="button" class="btn btn-orange" data-bs-toggle="modal" data-bs-target="#addAlatModal">
-                    <i class="fas fa-plus text-white me-2"></i>Tambah Alat
-                </button>
-    </div>
+                    <button type="button" class="btn btn-danger" id="bulkDeleteBtn" style="display: none;" onclick="bulkDelete()">
+                        <i class="fas fa-trash text-white me-2"></i>Hapus Terpilih (<span id="selectedCount">0</span>)
+                    </button>
+                    <button type="button" class="btn btn-orange" data-bs-toggle="modal" data-bs-target="#addAlatModal">
+                        <i class="fas fa-plus text-white me-2"></i>Tambah Alat
+                    </button>
+                </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover" id="alatTable">
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
                             <th>Kode Barang</th>
                             <th>Nama Alat</th>
                             <th>Kategori</th>
@@ -45,6 +63,7 @@
                     <tbody>
                         @forelse($alat as $item)
                         <tr>
+                            <td><input type="checkbox" class="row-checkbox" value="{{ $item->id_alat }}" onchange="updateSelectedCount()"></td>
                             <td>{{ $item->kode_barang ?? '-' }}</td>
                             <td>{{ $item->nama_alat }}</td>
                             <td>{{ $item->kategori->nama_kategori ?? 'N/A' }}</td>
@@ -63,7 +82,7 @@
                                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="editAlat({{ $item->id_alat }}, '{{ $item->nama_alat }}', {{ $item->id_kategori }}, {{ $item->stok }}, '{{ $item->deskripsi }}', '{{ $item->lokasi }}')" data-bs-toggle="modal" data-bs-target="#editAlatModal">
                                         <i class="fas fa-edit me-1"></i>Edit
                                     </button>
-                                    <form action="{{ route('admin.deleteAlat', ['id' => $item->id_alat]) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus alat ini?')">
+                                    <form action="{{ route('admin.deleteAlat', ['id' => $item->id_alat]) }}" method="POST" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -75,7 +94,8 @@
                         </tr>
                         @empty
                         <tr>
-                            <td class="text-center">Tidak ada data alat</td>
+                            <td><input type="checkbox" disabled></td>
+                            <td class="text-center" colspan="7">Tidak ada data alat</td>
                             <td>-</td>
                             <td>-</td>
                             <td>-</td>
@@ -490,7 +510,7 @@
     // Setup for both add and edit forms
     document.addEventListener('DOMContentLoaded', function() {
         setupCategoryEquipmentLoader('add');
-        
+
         // Initialize single code barang field visibility
         checkStockAndShowItems();
 
@@ -502,6 +522,97 @@
             });
         }
     });
+
+    // Toggle select all checkboxes
+    function toggleSelectAll() {
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        
+        updateSelectedCount();
+    }
+
+    // Update selected count display
+    function updateSelectedCount() {
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+        const selectedCount = rowCheckboxes.length;
+        const selectedCountElement = document.getElementById('selectedCount');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        
+        selectedCountElement.textContent = selectedCount;
+        
+        // Show/hide bulk delete button
+        if (selectedCount > 0) {
+            bulkDeleteBtn.style.display = 'inline-block';
+        } else {
+            bulkDeleteBtn.style.display = 'none';
+        }
+        
+        // Update select all checkbox state
+        const totalRowCheckboxes = document.querySelectorAll('.row-checkbox').length;
+        const selectAllCheckbox = document.getElementById('selectAll');
+        selectAllCheckbox.checked = selectedCount === totalRowCheckboxes && totalRowCheckboxes > 0;
+    }
+
+    // Bulk delete function
+    function bulkDelete() {
+        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+        if (selectedIds.length === 0) {
+            alert('Pilih minimal 1 alat untuk dihapus!');
+            return;
+        }
+
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/alat/bulk-delete';
+        
+        // Add CSRF token
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = document.querySelector('meta[name="csrf-token"]').content;
+        form.appendChild(csrfToken);
+        
+        // Add DELETE method override
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        // Add selected IDs
+        selectedIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ids[]';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+    
+    // Clear all selections
+    function clearSelections() {
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+        }
+        
+        updateSelectedCount();
+    }
 </script>
 @endsection
 

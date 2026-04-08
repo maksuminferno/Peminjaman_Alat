@@ -243,10 +243,45 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('btnSudahDikembalikan').onclick = handleSudahDikembalikan;
     });
 
-    // Handle "Belum Dikembalikan" button - just close modal
+    // Handle "Belum Dikembalikan" button - reset to dipinjam status
     document.getElementById('btnBelumDikembalikan').addEventListener('click', function() {
-        var modal = bootstrap.Modal.getInstance(fotoModal);
-        modal.hide();
+        if (!currentIdPengembalian) return;
+
+        if (!confirm('Apakah Anda yakin bukti foto ini tidak valid? Status akan dikembalikan ke "Menunggu Verifikasi" dan peminjam dapat upload ulang.')) {
+            return;
+        }
+
+        // Send AJAX request
+        fetch('/petugas/pengembalian/' + currentIdPengembalian + '/tolak-verifikasi', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                alasan: 'Bukti foto tidak valid'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                var modal = bootstrap.Modal.getInstance(fotoModal);
+                modal.hide();
+
+                // Show success message
+                alert('Bukti foto ditolak! Peminjam akan mendapat notifikasi untuk upload ulang.');
+                
+                // Reload page to refresh table
+                window.location.reload();
+            } else {
+                alert('Terjadi kesalahan: ' + (data.message || 'Gagal menolak verifikasi'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat menolak verifikasi');
+        });
     });
 
     // Show damage form

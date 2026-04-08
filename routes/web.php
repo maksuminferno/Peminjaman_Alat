@@ -23,6 +23,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/users/{id}', [AdminController::class, 'deleteUser'])->name('deleteUser');
     Route::get('/alat', [AdminController::class, 'alat'])->name('alat');
     Route::post('/alat', [AdminController::class, 'storeAlat'])->name('storeAlat');
+    Route::delete('/alat/bulk-delete', [AdminController::class, 'bulkDeleteAlat'])->name('bulkDeleteAlat');
     Route::put('/alat/{id}', [AdminController::class, 'updateAlat'])->name('updateAlat');
     Route::delete('/alat/{id}', [AdminController::class, 'deleteAlat'])->name('deleteAlat');
     Route::get('/alat/{id}/edit', [AdminController::class, 'editAlatDetails'])->name('alat.edit.details');
@@ -38,6 +39,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/peminjaman/{id}', [AdminController::class, 'deletePeminjaman'])->name('deletePeminjaman');
     Route::get('/pengembalian', [AdminController::class, 'pengembalian'])->name('pengembalian');
     Route::put('/pengembalian/{id}', [AdminController::class, 'updatePengembalian'])->name('updatePengembalian');
+    Route::post('/pengembalian/{id}/verifikasi', [AdminController::class, 'verifikasiPengembalian'])->name('verifikasiPengembalian');
+    Route::post('/pengembalian/{id}/tolak', [AdminController::class, 'tolakPengembalian'])->name('tolakPengembalian');
     Route::delete('/pengembalian/{id}', [AdminController::class, 'deletePengembalian'])->name('deletePengembalian');
     Route::get('/log-aktivitas', [AdminController::class, 'logAktivitas'])->name('log_aktivitas');
     Route::get('/api/peminjaman/riwayat/{username}', [AdminController::class, 'getRiwayatPeminjaman'])->name('riwayat.peminjaman');
@@ -71,6 +74,7 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
     Route::post('/pengembalian', [\App\Http\Controllers\PetugasController::class, 'storePengembalian'])->name('pengembalian.store');
     Route::delete('/pengembalian/{id}', [\App\Http\Controllers\PetugasController::class, 'deletePengembalian'])->name('deletePengembalian');
     Route::post('/pengembalian/{id}/confirm-returned', [\App\Http\Controllers\PetugasController::class, 'confirmReturned'])->name('confirmReturned');
+    Route::post('/pengembalian/{id}/tolak-verifikasi', [\App\Http\Controllers\PetugasController::class, 'tolakVerifikasi'])->name('tolakVerifikasi');
     Route::get('/api/pengembalian/{id}/details', [\App\Http\Controllers\PetugasController::class, 'getPengembalianDetails'])->name('api.pengembalian.details');
     Route::get('/laporan', [\App\Http\Controllers\PetugasController::class, 'laporan'])->name('laporan');
     Route::get('/export-pengembalian', [\App\Http\Controllers\PetugasController::class, 'exportPengembalian'])->name('export-pengembalian');

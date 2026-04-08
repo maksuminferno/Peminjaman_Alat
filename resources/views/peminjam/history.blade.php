@@ -27,7 +27,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover datatable">
+                <table class="table table-hover datatable" id="historyTable">
                     <thead>
                         <tr>
                             <th>ID Peminjaman</th>
@@ -94,10 +94,15 @@
                                 @endif
                             </td>
                             <td>
-                                @if($peminjaman->pengembalian)
+                                @if($peminjaman->status == 'dikembalikan' && $peminjaman->pengembalian)
+                                    <strong class="text-danger">Rp {{ number_format($peminjaman->pengembalian->denda, 0, ',', '.') }}</strong>
+                                    @if($peminjaman->pengembalian->denda_kerusakan > 0)
+                                        <br><small class="text-muted">(Kerusakan: Rp {{ number_format($peminjaman->pengembalian->denda_kerusakan, 0, ',', '.') }})</small>
+                                    @endif
+                                @elseif($peminjaman->pengembalian && $peminjaman->pengembalian->denda > 0)
                                     Rp {{ number_format($peminjaman->pengembalian->denda, 0, ',', '.') }}
                                 @else
-                                    Rp 0
+                                    <span class="text-success">Rp 0</span>
                                 @endif
                             </td>
                         </tr>
@@ -108,11 +113,6 @@
                         @endforelse
                     </tbody>
                 </table>
-
-                <!-- Pagination -->
-                <nav aria-label="Page navigation">
-                    {{ $peminjamanList->links() }}
-                </nav>
             </div>
         </div>
     </div>
@@ -157,5 +157,39 @@
         document.getElementById('alasanPeminjamanId').textContent = peminjamanId;
         document.getElementById('alasanDitolakText').textContent = alasan;
     }
+
+    $(document).ready(function() {
+        // Initialize DataTable
+        if ($('#historyTable').length && typeof $.fn.DataTable !== 'undefined') {
+            if (!$.fn.DataTable.isDataTable('#historyTable')) {
+                try {
+                    $('#historyTable').DataTable({
+                        paging: true,
+                        searching: true,
+                        ordering: true,
+                        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+                        pageLength: 10,
+                        responsive: true,
+                        language: {
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data",
+                            info: "Menampilkan _START_ - _END_ dari _TOTAL_ data",
+                            infoEmpty: "Tidak ada data tersedia",
+                            zeroRecords: "Tidak ditemukan hasil",
+                            paginate: {
+                                first: "Awal",
+                                last: "Akhir",
+                                next: "›",
+                                previous: "‹"
+                            }
+                        }
+                    });
+                    console.log('✓ historyTable DataTable initialized');
+                } catch (e) {
+                    console.error('Error initializing DataTable:', e);
+                }
+            }
+        }
+    });
 </script>
 @endsection

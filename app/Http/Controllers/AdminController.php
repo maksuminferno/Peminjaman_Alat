@@ -261,6 +261,26 @@ class AdminController extends Controller
         return redirect()->route('admin.alat')->with('success', 'Alat berhasil dihapus!');
     }
 
+    public function bulkDeleteAlat(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:alat,id_alat'
+        ]);
+
+        $ids = $request->input('ids');
+        $deletedCount = 0;
+
+        foreach ($ids as $id) {
+            $alat = Alat::findOrFail($id);
+            $this->logActivity('Menghapus alat: ' . $alat->nama_alat);
+            $alat->delete();
+            $deletedCount++;
+        }
+
+        return redirect()->route('admin.alat')->with('success', "Berhasil menghapus {$deletedCount} alat!");
+    }
+
     public function editAlatDetails($id)
     {
         $alat = Alat::findOrFail($id);
@@ -566,6 +586,129 @@ class AdminController extends Controller
         $this->logActivity('Menghapus pengembalian ID: PGB' . str_pad($id, 3, '0', STR_PAD_LEFT));
 
         return redirect()->route('admin.pengembalian')->with('success', 'Pengembalian berhasil dihapus!');
+    }
+
+    public function tolakPengembalian(Request $request, $id)
+    {
+        try {
+            $pengembalian = Pengembalian::findOrFail($id);
+            $peminjaman = $pengembalian->peminjaman;
+
+            // Reset peminjaman status back to 'dipinjam'
+            $peminjaman->update([
+                'status' => 'dipinjam'
+            ]);
+
+            // Delete the pengembalian record
+            $pengembalian->delete();
+
+            $this->logActivity('Menolak pengembalian untuk peminjaman ID: ' . $peminjaman->id_peminjaman);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengembalian berhasil ditolak! Peminjam dapat melakukan pengembalian kembali.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Gagal menolak pengembalian: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function verifikasiPengembalian(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'action' => 'required|in:terima,tolak'
+            ]);
+
+            $pengembalian = Pengembalian::findOrFail($id);
+            $peminjaman = $pengembalian->peminjaman;
+
+            if ($request->action === 'terima') {
+                // Accept the return - update status to dikembalikan
+                $peminjaman->update([
+                    'status' => 'dikembalikan'
+                ]);
+
+                // Update stock based on returned items
+                $jumlahDikembalikan = $request->jumlah_dikembalikan ?? [];
+                $kondisiAlat = $request->kondisi_alat ?? [];
+                $detailPeminjamanList = $peminjaman->detailPeminjaman;
+                $hasDamage = false;
+
+                foreach ($detailPeminjamanList as $index => $detail) {
+                    $jumlah = $jumlahDikembalikan[$index] ?? $detail->jumlah;
+                    $kondisi = $kondisiAlat[$index] ?? 'baik';
+
+                    $alat = $detail->alat;
+
+                    // If the tool is in good condition, add it back to stock
+                    if ($kondisi === 'baik') {
+                        $alat->update(['stok' => $alat->stok + $jumlah]);
+                    } else {
+                        // If damaged, mark as rusak and don't add to stock
+                        $alat->update(['kondisi' => 'rusak']);
+                        $hasDamage = true;
+                    }
+                }
+
+                // Update pengembalian record with actual condition and damage fine
+                $dendaKerusakan = 0;
+                if ($hasDamage) {
+                    // Calculate damage fine: Rp 50,000 per damaged item
+                    $tarifKerusakan = config('denda.tarif_kerusakan_default', 50000);
+                    $jumlahRusak = 0;
+                    
+                    if (is_array($kondisiAlat)) {
+                        foreach ($kondisiAlat as $idx => $kondisi) {
+                            if ($kondisi === 'rusak') {
+                                $jumlahRusak += $jumlahDikembalikan[$idx] ?? 1;
+                            }
+                        }
+                    }
+                    
+                    $dendaKerusakan = $tarifKerusakan * $jumlahRusak;
+                    
+                    // Update pengembalian with damage fine
+                    $pengembalian->update([
+                        'kondisi_alat' => 'rusak',
+                        'denda_kerusakan' => $dendaKerusakan,
+                        'denda' => $pengembalian->denda_keterlambatan + $dendaKerusakan
+                    ]);
+                }
+
+                $this->logActivity('Menerima pengembalian untuk peminjaman ID: ' . $peminjaman->id_peminjaman . 
+                    ($hasDamage ? ' - Ada kerusakan, denda: Rp ' . number_format($dendaKerusakan, 0, ',', '.') : ''));
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pengembalian berhasil diterima!' . ($hasDamage ? ' Denda kerusakan: Rp ' . number_format($dendaKerusakan, 0, ',', '.') : '')
+                ]);
+            } else {
+                // Reject the return - reset to dipinjam
+                $peminjaman->update([
+                    'status' => 'dipinjam',
+                    'alasan_ditolak' => $request->alasan_penolakan ?? 'Bukti foto tidak sesuai'
+                ]);
+
+                // Delete the pengembalian record
+                $pengembalian->delete();
+
+                $this->logActivity('Menolak pengembalian untuk peminjaman ID: ' . $peminjaman->id_peminjaman);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pengembalian berhasil ditolak! Peminjam dapat melakukan pengembalian kembali.'
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Gagal memverifikasi pengembalian: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function logAktivitas()

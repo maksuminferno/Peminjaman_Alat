@@ -99,17 +99,20 @@
                                     @if($peminjaman->status == 'dipinjam') status-dipinjam
                                     @elseif($peminjaman->status == 'terlambat') status-belum_dikembalikan
                                     @elseif($peminjaman->status == 'menunggu persetujuan') status-belum_dikembalikan
+                                    @elseif($peminjaman->status == 'menunggu verifikasi pengembalian') status-belum_dikembalikan
                                     @elseif($peminjaman->status == 'dikembalikan') status-dikembalikan
                                     @elseif($peminjaman->status == 'ditolak') status-ditolak
                                     @endif">
                                     @if($peminjaman->status == 'menunggu persetujuan')
                                         Menunggu Persetujuan
+                                    @elseif($peminjaman->status == 'menunggu verifikasi pengembalian')
+                                        Menunggu Verifikasi Pengembalian
                                     @elseif($peminjaman->status == 'dipinjam')
                                         Dipinjam
                                     @elseif($peminjaman->status == 'dikembalikan')
                                         Dikembalikan
                                     @elseif($peminjaman->status == 'ditolak')
-                                        Ditolak
+                                        Bukti Ditolak
                                     @else
                                         {{ ucfirst(str_replace('_', ' ', $peminjaman->status)) }}
                                     @endif
@@ -124,11 +127,21 @@
                                     </button>
                                 @elseif($peminjaman->status == 'menunggu persetujuan')
                                     <span class="text-muted"><i class="fas fa-clock me-1"></i>Menunggu Persetujuan Petugas</span>
+                                @elseif($peminjaman->status == 'menunggu verifikasi pengembalian')
+                                    <span class="text-muted"><i class="fas fa-hourglass-half me-1"></i>Menunggu Verifikasi Bukti Foto</span>
                                 @elseif($peminjaman->status == 'ditolak')
-                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#alasanDitolakModal"
-                                        data-alasan="{{ $peminjaman->alasan_ditolak ?? 'Tidak ada alasan' }}">
-                                        <i class="fas fa-info-circle me-1"></i>Lihat Alasan
-                                    </button>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger mb-1" data-bs-toggle="modal" data-bs-target="#alasanDitolakModal"
+                                            data-alasan="{{ $peminjaman->alasan_ditolak ?? 'Bukti foto tidak valid' }}">
+                                            <i class="fas fa-info-circle me-1"></i>Lihat Alasan
+                                        </button>
+                                        <br>
+                                        <button type="button" class="btn btn-sm btn-orange" data-bs-toggle="modal" data-bs-target="#confirmReturnModal"
+                                            data-id="{{ $peminjaman->id_peminjaman }}"
+                                            data-details="{{ json_encode($detailsData) }}">
+                                            <i class="fas fa-upload me-1"></i>Upload Ulang Bukti
+                                        </button>
+                                    </div>
                                 @elseif($peminjaman->status == 'dikembalikan')
                                     <span class="text-muted">-</span>
                                 @endif
@@ -185,36 +198,6 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" form="returnForm" class="btn btn-orange">Konfirmasi</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Damage Description Modal -->
-    <div class="modal fade" id="damageDescriptionModal" tabindex="-1" aria-labelledby="damageDescriptionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="damageDescriptionModalLabel"><i class="fas fa-exclamation-triangle text-warning me-2"></i>Deskripsi Kerusakan</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="damageDescriptionForm">
-                        <input type="hidden" id="damageTempIndex">
-                        <input type="hidden" id="damageModalType" value="individual">
-                        <div class="mb-3">
-                            <label class="form-label">Nama Alat</label>
-                            <input type="text" class="form-control" id="damageAlatName" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Deskripsi Kerusakan <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="damageDescription" rows="4" placeholder="Jelaskan kondisi kerusakan alat secara detail..."></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-orange" onclick="saveDamageDescription()">Simpan</button>
                 </div>
             </div>
         </div>
@@ -279,19 +262,9 @@
                             <div class="mb-2">
                                 <small class="text-muted">Kode Barang: <strong>${detail.kode_barang || '-'}</strong></small>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Kondisi Alat</label>
-                                <select class="form-select" name="kondisi_alat[${index}]" id="kondisi_alat_${index}" onchange="handleConditionChange(this, ${index}, '${detail.nama_alat}')">
-                                    <option value="baik" selected>Baik</option>
-                                    <option value="rusak">Rusak</option>
-                                </select>
-                            </div>
-                            <div class="mb-3 damage-description-field" id="damage_field_${index}" style="display: none;">
-                                <label class="form-label">Deskripsi Kerusakan <span class="text-danger">*</span></label>
-                                <textarea class="form-control" name="deskripsi_kerusakan[${index}]" rows="3" placeholder="Jelaskan kondisi kerusakan alat secara detail..."></textarea>
-                            </div>
                             <input type="hidden" name="id_alat[${index}]" value="${detail.id_alat}">
                             <input type="hidden" name="jumlah_dikembalikan[${index}]" value="${detail.jumlah}">
+                            <input type="hidden" name="kondisi_alat[${index}]" value="baik">
                         </div>
                     </div>
                 `;
@@ -302,22 +275,6 @@
         });
     });
 
-    // Handle condition change - show/hide damage description field
-    function handleConditionChange(selectElement, index, alatName) {
-        const damageField = document.getElementById(`damage_field_${index}`);
-
-        if (selectElement.value === 'rusak') {
-            damageField.style.display = 'block';
-        } else {
-            damageField.style.display = 'none';
-            // Clear the textarea when condition is changed to 'baik'
-            const textarea = damageField.querySelector('textarea');
-            if (textarea) {
-                textarea.value = '';
-            }
-        }
-    }
-
     // Form validation and submit with AJAX for individual return
     document.addEventListener('DOMContentLoaded', function() {
         const returnForm = document.getElementById('returnForm');
@@ -326,34 +283,6 @@
         if (submitBtn) {
             submitBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                
-                // Check if there are any damaged fields
-                const damagedFields = document.querySelectorAll('#equipmentDetails select[name^="kondisi_alat["][value="rusak"]');
-                let hasError = false;
-
-                damagedFields.forEach(function(select) {
-                    const indexMatch = select.name.match(/\[(\d+)\]/);
-                    if (indexMatch) {
-                        const index = indexMatch[1];
-                        const textarea = document.querySelector(`textarea[name="deskripsi_kerusakan[${index}]"]`);
-
-                        if (!textarea || textarea.value.trim() === '') {
-                            hasError = true;
-                            if (select.closest('.card')) {
-                                select.closest('.card').classList.add('border-danger');
-                            }
-                        } else {
-                            if (select.closest('.card')) {
-                                select.closest('.card').classList.remove('border-danger');
-                            }
-                        }
-                    }
-                });
-
-                if (hasError) {
-                    alert('Mohon isi deskripsi kerusakan untuk alat yang rusak!');
-                    return;
-                }
 
                 // Submit form via AJAX
                 const formData = new FormData(returnForm);
@@ -372,12 +301,12 @@
                 .then(async response => {
                     console.log('Response status:', response.status);
                     console.log('Response ok:', response.ok);
-                     v
+                    
                     if (!response.ok) {
                         // Coba baca error detail dari response
-                        const errorText = await responseClone.text();
+                        const errorText = await response.text();
                         console.error('Server error response:', errorText);
-                        
+
                         // Coba parse sebagai JSON jika mungkin
                         try {
                             const errorJson = JSON.parse(errorText);
@@ -386,7 +315,7 @@
                             throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);
                         }
                     }
-                    
+
                     return response.json();
                 })
                 .then(data => {
@@ -428,34 +357,6 @@
         if (submitBtnSelected) {
             submitBtnSelected.addEventListener('click', function(e) {
                 e.preventDefault();
-                
-                // Check if there are any damaged fields
-                const damagedFields = document.querySelectorAll('#selectedEquipmentDetails select[name^="kondisi_alat["][value="rusak"]');
-                let hasError = false;
-
-                damagedFields.forEach(function(select) {
-                    const indexMatch = select.name.match(/\[(\d+)\]/);
-                    if (indexMatch) {
-                        const index = indexMatch[1];
-                        const textarea = document.querySelector(`textarea[name="deskripsi_kerusakan[${index}]"]`);
-
-                        if (!textarea || textarea.value.trim() === '') {
-                            hasError = true;
-                            if (select.closest('.card')) {
-                                select.closest('.card').classList.add('border-danger');
-                            }
-                        } else {
-                            if (select.closest('.card')) {
-                                select.closest('.card').classList.remove('border-danger');
-                            }
-                        }
-                    }
-                });
-
-                if (hasError) {
-                    alert('Mohon isi deskripsi kerusakan untuk alat yang rusak!');
-                    return;
-                }
 
                 // Submit form via AJAX
                 const formData = new FormData(returnSelectedForm);

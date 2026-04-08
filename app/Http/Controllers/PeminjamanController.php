@@ -136,7 +136,7 @@ class PeminjamanController extends Controller
             });
         }
 
-        $peminjamanList = $query->paginate(10);
+        $peminjamanList = $query->get();
 
         return view('peminjam.history', compact('peminjamanList'));
     }
@@ -524,6 +524,12 @@ class PeminjamanController extends Controller
             $overallCondition = 'rusak';
         }
 
+        // Note: Since we removed the condition form from borrower's return page,
+        // kondisi_alat is always 'baik' by default. Admin/Petugas will verify and 
+        // can update the condition during verification process.
+        // For now, we only calculate late fine. Damage fine will be calculated
+        // when admin/petugas verifies and sets the actual condition.
+
         // Handle file upload
         $buktiFotoPath = null;
         if ($request->hasFile('bukti_foto')) {
@@ -596,42 +602,11 @@ class PeminjamanController extends Controller
                 'bukti_foto' => $buktiFotoPath
             ]);
 
-            // Update borrowing status
-            $peminjaman->update(['status' => 'dikembalikan']);
-            \Log::info('Peminjaman status updated to dikembalikan');
+            // Update borrowing status to waiting for verification
+            $peminjaman->update(['status' => 'menunggu verifikasi pengembalian']);
+            \Log::info('Peminjaman status updated to menunggu verifikasi pengembalian');
 
-            // Process each returned tool
-            $detailPeminjamanList = $peminjaman->detailPeminjaman;
-
-            if (is_array($jumlahDikembalikan)) {
-                foreach ($jumlahDikembalikan as $index => $jumlah) {
-                    $kondisi = is_array($kondisiAlat) ? ($kondisiAlat[$index] ?? 'baik') : $kondisiAlat;
-                    $idAlat = $request->id_alat[$index] ?? null;
-
-                    if (!$idAlat || $jumlah <= 0) {
-                        continue;
-                    }
-
-                    $detail = $detailPeminjamanList->firstWhere('id_alat', $idAlat);
-
-                    if (!$detail) {
-                        continue;
-                    }
-
-                    // Update stock based on condition
-                    $alat = $detail->alat;
-
-                    // If the tool is damaged, don't add it back to available stock
-                    if ($kondisi === 'baik') {
-                        $alat->update(['stok' => $alat->stok + $jumlah]);
-                    }
-
-                    // Update the overall condition of the equipment in the alat table
-                    if ($kondisi === 'rusak') {
-                        $alat->update(['kondisi' => 'rusak']);
-                    }
-                }
-            }
+            // Note: Stock will NOT be updated here. It will be updated when admin verifies the return.
 
             // Log activity dengan detail denda
             $alatNames = [];

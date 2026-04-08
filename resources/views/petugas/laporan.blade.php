@@ -84,15 +84,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td class="text-center" colspan="3">Tidak ada data pengembalian</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
+                            <td class="text-center" colspan="12">Tidak ada data pengembalian</td>
                         </tr>
                         @endforelse
                     </tbody>

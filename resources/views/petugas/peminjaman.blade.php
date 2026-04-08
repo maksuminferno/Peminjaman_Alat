@@ -45,7 +45,7 @@
                             <th>Tanggal Kembali Rencana</th>
                             <th>Alasan Peminjaman</th>
                             <th>Status</th>
-
+                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -190,7 +190,7 @@
                                 </span>
                             </td>
                             <td>
-                                <form action="{{ route('petugas.deletePeminjaman', ['id' => $peminjamanItem->id_peminjaman]) }}" method="POST" style="display:inline;" onsubmit="return confirm('PERINGATAN: Tindakan ini akan menghapus peminjaman dan mengembalikan stok alat. Apakah Anda yakin?')">
+                                <form action="{{ route('petugas.deletePeminjaman', ['id' => $peminjamanItem->id_peminjaman]) }}" method="POST" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
