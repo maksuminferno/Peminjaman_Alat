@@ -80,11 +80,7 @@
                                                 </div>
                                             </div>
                                         </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="{{ route('peminjam.profile') }}"><i class="fas fa-user me-2"></i>Profil Saya</a></li>
-                                        <li><a class="dropdown-item" href="{{ route('peminjam.settings') }}"><i class="fas fa-cog me-2"></i>Pengaturan</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
+                                   
                                             <form method="POST" action="{{ url('/logout') }}">
                                                 @csrf
                                                 <button type="submit" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt me-2"></i>Keluar</button>

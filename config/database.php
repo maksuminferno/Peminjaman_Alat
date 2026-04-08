@@ -78,15 +78,16 @@ return [
                 (PHP_VERSION_ID >= 80500 ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
-
 'pgsql' => [
     'driver' => 'pgsql',
-    'host' => env('DB_HOST'),
-    'database' => env('DB_DATABASE'),
-    'username' => env('DB_USERNAME'),
-    'password' => env('DB_PASSWORD'),
-    'port' => env('DB_PORT'),
-    'sslmode' => env('DB_SSLMODE', 'require'),
+    'url' => env('DATABASE_URL'),
+
+    'charset' => 'utf8',
+    'prefix' => '',
+    'prefix_indexes' => true,
+    'search_path' => 'public',
+    'sslmode' => 'require',
+     
 ],
         'sqlsrv' => [
             'driver' => 'sqlsrv',
